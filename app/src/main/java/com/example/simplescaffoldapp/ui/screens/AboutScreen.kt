@@ -205,13 +205,13 @@ fun AppInfoCard() {
             InfoRow(
                 icon = Icons.Filled.DateRange,
                 label = "发布日期",
-                value = "2025年01月"
+                value = "2025年11月"
             )
 
             InfoRow(
                 icon = Icons.Filled.Star,
                 label = "更新日期",
-                value = "2025年01月15日"
+                value = "2025年11月25日"
             )
         }
     }
@@ -242,13 +242,13 @@ fun DeveloperInfoCard() {
             InfoRow(
                 icon = Icons.Filled.Person,
                 label = "开发者",
-                value = "Android 学习小组"
+                value = "lingwuzeng"
             )
 
             InfoRow(
                 icon = Icons.Filled.Email,
                 label = "联系邮箱",
-                value = "developer@example.com"
+                value = "lingwu@qq.com"
             )
 
             InfoRow(
@@ -288,7 +288,7 @@ fun CopyrightCard() {
 
             Text(
                 text = """
-                    Copyright © 2025 Android学习小组
+                    Copyright © 2025 lingwuzeng
                     All Rights Reserved. 保留所有权利。
                     
                     本应用程序及其所有内容（包括但不限于代码、设计、图标、文档）均受版权法保护。
