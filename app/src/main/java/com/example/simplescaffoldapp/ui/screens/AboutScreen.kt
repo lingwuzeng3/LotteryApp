@@ -46,8 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * 版权信息/关于页面
- * 
+ * 关于页面
  * 显示开发者信息、版本信息、版权声明等
  */
 @Composable
@@ -135,7 +134,7 @@ fun AppLogoSection() {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 应用图标（使用渐变背景模拟）
+        // 应用图标-使用渐变背景模拟
         Box(
             modifier = Modifier
                 .size(100.dp)
@@ -278,7 +277,7 @@ fun CopyrightCard() {
                 .padding(16.dp)
         ) {
             Text(
-                text = "📜 版权声明",
+                text = "版权声明",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer

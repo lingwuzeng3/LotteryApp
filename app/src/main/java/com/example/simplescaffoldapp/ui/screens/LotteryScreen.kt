@@ -1,7 +1,7 @@
 package com.example.simplescaffoldapp.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
@@ -34,13 +33,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,35 +49,67 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.simplescaffoldapp.model.LotteryConfig
+import com.example.simplescaffoldapp.model.LotteryEffect
+import com.example.simplescaffoldapp.model.LotteryIntent
 import com.example.simplescaffoldapp.model.LotteryTicket
 import com.example.simplescaffoldapp.viewModel.LotteryViewModel
 
 /**
- * 彩票生成主页面
- * 
- * 功能：
- * 1. 显示当前生成的彩票号码
- * 2. 显示历史生成记录
- * 3. 配置参数对话框
+ * 彩票生成主页面 - MVI 模式
+ *
+ * MVI 核心变化：
+ * 1. 通过 onIntent 发送意图，而非直接调用 ViewModel 方法
+ * 2. 监听 Effect 处理一次性事件
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LotteryScreen(
     innerPadding: PaddingValues,
     viewModel: LotteryViewModel
 ) {
+    val context = LocalContext.current
+
     // 收集 UI 状态
     val uiState by viewModel.uiState.collectAsState()
 
+    // ==================== MVI：定义 Intent 发送器 ====================
+    val onIntent: (LotteryIntent) -> Unit = { intent ->
+        viewModel.handleIntent(intent)
+    }
+
+    // ==================== MVI：处理一次性副作用 ====================
+    LaunchedEffect(Unit) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                is LotteryEffect.ShowToast -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                }
+                is LotteryEffect.GenerateSuccess -> {
+                    Toast.makeText(
+                        context,
+                        "生成成功！号码：${effect.numbers.joinToString()}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                is LotteryEffect.ConfigUpdated -> {
+                    Toast.makeText(context, "配置已更新", Toast.LENGTH_SHORT).show()
+                }
+                is LotteryEffect.HistoryCleared -> {
+                    Toast.makeText(context, "历史记录已清空", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    // ==================== UI 渲染 ====================
     Surface(
         modifier = Modifier
             .fillMaxSize()
@@ -88,21 +120,21 @@ fun LotteryScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // ===== 当前配置信息卡片 =====
+            // 配置信息卡片
             ConfigInfoCard(config = uiState.config)
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ===== 彩票号码显示区域 =====
+            // 彩票显示卡片 - 传递 onIntent
             LotteryDisplayCard(
                 ticket = uiState.currentTicket,
                 isGenerating = uiState.isGenerating,
-                onGenerateClick = { viewModel.generateLottery() }
+                onIntent = onIntent  // MVI: 传递 Intent 发送器
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ===== 历史记录区域 =====
+            // 历史记录
             Text(
                 text = "📋 历史记录",
                 style = MaterialTheme.typography.titleMedium,
@@ -111,7 +143,6 @@ fun LotteryScreen(
             )
 
             if (uiState.historyTickets.isEmpty()) {
-                // 无历史记录提示
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -128,7 +159,6 @@ fun LotteryScreen(
                     )
                 }
             } else {
-                // 历史记录列表
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -143,22 +173,18 @@ fun LotteryScreen(
             }
         }
 
-        // ===== 配置对话框 =====
+        // 配置对话框 - 传递 onIntent
         if (uiState.showConfigDialog) {
             ConfigDialog(
                 currentConfig = uiState.config,
-                onDismiss = { viewModel.toggleConfigDialog(false) },
-                onConfirm = { newConfig ->
-                    viewModel.updateConfig(newConfig)
-                    viewModel.toggleConfigDialog(false)
-                }
+                onIntent = onIntent  // MVI: 传递 Intent 发送器
             )
         }
     }
 }
 
 /**
- * 当前配置信息卡片
+ * 配置信息卡片（无变化）
  */
 @Composable
 fun ConfigInfoCard(config: LotteryConfig) {
@@ -181,9 +207,6 @@ fun ConfigInfoCard(config: LotteryConfig) {
     }
 }
 
-/**
- * 配置项显示组件
- */
 @Composable
 fun ConfigItem(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -202,14 +225,16 @@ fun ConfigItem(label: String, value: String) {
 }
 
 /**
- * 彩票号码显示卡片
+ * 彩票显示卡片 - MVI 版本
+ *
+ * 变化：使用 onIntent 代替 onGenerateClick
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LotteryDisplayCard(
     ticket: LotteryTicket?,
     isGenerating: Boolean,
-    onGenerateClick: () -> Unit
+    onIntent: (LotteryIntent) -> Unit  // MVI: Intent 发送器
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -224,7 +249,6 @@ fun LotteryDisplayCard(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 标题
             Text(
                 text = "🎯 中国体育彩票",
                 style = MaterialTheme.typography.titleLarge,
@@ -240,7 +264,6 @@ fun LotteryDisplayCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 号码显示区域
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -249,7 +272,6 @@ fun LotteryDisplayCard(
             ) {
                 when {
                     isGenerating -> {
-                        // 生成中状态
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator(
                                 color = MaterialTheme.colorScheme.primary
@@ -262,7 +284,6 @@ fun LotteryDisplayCard(
                         }
                     }
                     ticket != null -> {
-                        // 显示彩票号码
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.Center,
@@ -289,7 +310,6 @@ fun LotteryDisplayCard(
                         }
                     }
                     else -> {
-                        // 初始状态
                         Text(
                             text = "点击按钮生成彩票号码",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -299,7 +319,6 @@ fun LotteryDisplayCard(
                 }
             }
 
-            // 生成时间
             if (ticket != null && !isGenerating) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -311,9 +330,9 @@ fun LotteryDisplayCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 生成按钮
+            // MVI: 发送 Intent 而非调用方法
             Button(
-                onClick = onGenerateClick,
+                onClick = { onIntent(LotteryIntent.GenerateLottery) },
                 enabled = !isGenerating,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -330,7 +349,7 @@ fun LotteryDisplayCard(
 }
 
 /**
- * 彩票号码球组件
+ * 彩票号码球（无变化）
  */
 @Composable
 fun LotteryBall(
@@ -370,7 +389,7 @@ fun LotteryBall(
 }
 
 /**
- * 历史记录项
+ * 历史记录项（无变化）
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -421,13 +440,14 @@ fun HistoryTicketItem(
 }
 
 /**
- * 配置对话框
+ * 配置对话框 - MVI 版本
+ *
+ * 变化：使用 onIntent 代替 onDismiss/onConfirm
  */
 @Composable
 fun ConfigDialog(
     currentConfig: LotteryConfig,
-    onDismiss: () -> Unit,
-    onConfirm: (LotteryConfig) -> Unit
+    onIntent: (LotteryIntent) -> Unit  // MVI: Intent 发送器
 ) {
     var numberCount by remember { mutableStateOf(currentConfig.numberCount.toString()) }
     var minNumber by remember { mutableStateOf(currentConfig.minNumber.toString()) }
@@ -435,7 +455,10 @@ fun ConfigDialog(
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            // MVI: 发送关闭对话框的 Intent
+            onIntent(LotteryIntent.ToggleConfigDialog(false))
+        },
         title = {
             Text(
                 text = "⚙️ 参数配置",
@@ -444,10 +467,9 @@ fun ConfigDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // 号码个数输入
                 OutlinedTextField(
                     value = numberCount,
-                    onValueChange = { 
+                    onValueChange = {
                         numberCount = it
                         errorMessage = null
                     },
@@ -458,10 +480,9 @@ fun ConfigDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 最小值输入
                 OutlinedTextField(
                     value = minNumber,
-                    onValueChange = { 
+                    onValueChange = {
                         minNumber = it
                         errorMessage = null
                     },
@@ -472,10 +493,9 @@ fun ConfigDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 最大值输入
                 OutlinedTextField(
                     value = maxNumber,
-                    onValueChange = { 
+                    onValueChange = {
                         maxNumber = it
                         errorMessage = null
                     },
@@ -486,7 +506,6 @@ fun ConfigDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 错误提示
                 errorMessage?.let {
                     Text(
                         text = it,
@@ -495,7 +514,6 @@ fun ConfigDialog(
                     )
                 }
 
-                // 说明文字
                 Divider()
                 Text(
                     text = "说明：号码范围必须能够生成指定数量的不重复号码",
@@ -507,7 +525,6 @@ fun ConfigDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    // 验证输入
                     val count = numberCount.toIntOrNull() ?: 10
                     val min = minNumber.toIntOrNull() ?: 1
                     val max = maxNumber.toIntOrNull() ?: 35
@@ -526,7 +543,10 @@ fun ConfigDialog(
                             errorMessage = "号码范围不足以生成${count}个不重复号码"
                         }
                         else -> {
-                            onConfirm(LotteryConfig(count, min, max))
+                            // MVI: 发送更新配置的 Intent
+                            onIntent(LotteryIntent.UpdateConfig(LotteryConfig(count, min, max)))
+                            // MVI: 发送关闭对话框的 Intent
+                            onIntent(LotteryIntent.ToggleConfigDialog(false))
                         }
                     }
                 }
@@ -535,7 +555,12 @@ fun ConfigDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = {
+                    // MVI: 发送关闭对话框的 Intent
+                    onIntent(LotteryIntent.ToggleConfigDialog(false))
+                }
+            ) {
                 Text("取消")
             }
         }

@@ -113,7 +113,7 @@ fun MainScaffold(
                 
                 // 抽屉标题
                 Text(
-                    text = "🎯 体育彩票模拟器",
+                    text = "体育彩票模拟器",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -260,7 +260,7 @@ fun MainScaffold(
                 }
             },
 
-            // ===== 悬浮操作按钮 =====
+            //悬浮操作按钮
             floatingActionButton = {
                 // 仅在彩票生成页显示 FAB
                 if (selectedItem == 0) {

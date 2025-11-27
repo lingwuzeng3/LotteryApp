@@ -54,7 +54,7 @@ fun InstructionScreen(innerPadding: PaddingValues) {
         ) {
             // 页面标题
             Text(
-                text = "📖 使用说明",
+                text = "使用说明",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
