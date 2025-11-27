@@ -1,5 +1,6 @@
 package com.example.simplescaffoldapp.ui.components
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -43,48 +44,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.simplescaffoldapp.model.LotteryIntent  // 导入 Intent
 import com.example.simplescaffoldapp.ui.screens.AboutScreen
 import com.example.simplescaffoldapp.ui.screens.InstructionScreen
 import com.example.simplescaffoldapp.ui.screens.LotteryScreen
 import com.example.simplescaffoldapp.viewModel.LotteryViewModel
 import kotlinx.coroutines.launch
 
-/**
- * 底部导航项数据类
- */
 data class BottomNavItem(
     val label: String,
     val selectedIcon: @Composable () -> Unit,
     val unselectedIcon: @Composable () -> Unit
 )
 
-/**
- * 主脚手架组件 - 应用的主要布局结构
- * 
- * 包含：
- * 1. 顶部应用栏（TopAppBar）
- * 2. 底部导航栏（BottomNavigationBar）
- * 3. 侧边抽屉栏（NavigationDrawer）
- * 4. 悬浮操作按钮（FAB）
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScaffold(
     viewModel: LotteryViewModel = viewModel()
 ) {
-    // 抽屉状态管理
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    
-    // 协程作用域，用于打开/关闭抽屉
     val scope = rememberCoroutineScope()
-    
-    // 当前选中的底部导航项索引
     var selectedItem by remember { mutableIntStateOf(0) }
-    
-    // 从 ViewModel 收集 UI 状态
     val uiState by viewModel.uiState.collectAsState()
 
-    // 底部导航项配置
+    //MVI：定义 Intent 发送器
+    val onIntent: (LotteryIntent) -> Unit = { intent ->
+        viewModel.handleIntent(intent)
+    }
+
     val bottomNavItems = listOf(
         BottomNavItem(
             label = "彩票生成",
@@ -103,35 +90,31 @@ fun MainScaffold(
         )
     )
 
-    // 模态导航抽屉 - 最外层容器
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            // 抽屉内容
             ModalDrawerSheet {
                 Spacer(modifier = Modifier.height(16.dp))
-                
-                // 抽屉标题
+
                 Text(
-                    text = "体育彩票模拟器",
+                    text = "🎯 体育彩票模拟器",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-                
+
                 Text(
                     text = "为公益事业贡献力量",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
                 Divider()
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // 抽屉导航项 - 彩票生成
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Filled.Home, contentDescription = null) },
                     label = { Text("彩票生成") },
@@ -143,7 +126,6 @@ fun MainScaffold(
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                // 抽屉导航项 - 使用说明
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Filled.Info, contentDescription = null) },
                     label = { Text("使用说明") },
@@ -155,7 +137,6 @@ fun MainScaffold(
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                // 抽屉导航项 - 关于
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Filled.Person, contentDescription = null) },
                     label = { Text("关于/版权") },
@@ -169,25 +150,25 @@ fun MainScaffold(
 
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-                // 抽屉功能项 - 配置设置
+
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
                     label = { Text("参数配置") },
                     selected = false,
                     onClick = {
-                        viewModel.toggleConfigDialog(true)
+                        // MVI 方式：发送 Intent
+                        onIntent(LotteryIntent.ToggleConfigDialog(true))
                         scope.launch { drawerState.close() }
                     },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                // 抽屉功能项 - 清空历史
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Filled.Delete, contentDescription = null) },
                     label = { Text("清空历史") },
                     selected = false,
                     onClick = {
-                        viewModel.clearHistory()
+                        onIntent(LotteryIntent.ClearHistory)
                         scope.launch { drawerState.close() }
                     },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
@@ -195,19 +176,16 @@ fun MainScaffold(
             }
         }
     ) {
-        // Scaffold 布局骨架
         Scaffold(
-            // ===== 顶部应用栏 =====
             topBar = {
                 TopAppBar(
-                    title = { 
+                    title = {
                         Text(
                             text = bottomNavItems[selectedItem].label,
                             fontWeight = FontWeight.Bold
-                        ) 
+                        )
                     },
                     navigationIcon = {
-                        // 菜单按钮 - 打开抽屉
                         IconButton(onClick = {
                             scope.launch { drawerState.open() }
                         }) {
@@ -218,11 +196,10 @@ fun MainScaffold(
                         }
                     },
                     actions = {
-                        // 顶部栏右侧操作按钮
                         if (selectedItem == 0) {
-                            // 配置按钮（仅在彩票生成页显示）
                             IconButton(onClick = {
-                                viewModel.toggleConfigDialog(true)
+                                // ✅ MVI 方式：发送 Intent
+                                onIntent(LotteryIntent.ToggleConfigDialog(true))
                             }) {
                                 Icon(
                                     imageVector = Icons.Filled.Settings,
@@ -239,8 +216,6 @@ fun MainScaffold(
                     )
                 )
             },
-
-            // ===== 底部导航栏 =====
             bottomBar = {
                 NavigationBar {
                     bottomNavItems.forEachIndexed { index, item ->
@@ -259,13 +234,13 @@ fun MainScaffold(
                     }
                 }
             },
-
-            //悬浮操作按钮
             floatingActionButton = {
-                // 仅在彩票生成页显示 FAB
                 if (selectedItem == 0) {
                     FloatingActionButton(
-                        onClick = { viewModel.generateLottery() },
+                        onClick = {
+                            //MVI 发送 Intent
+                            onIntent(LotteryIntent.GenerateLottery)
+                        },
                         containerColor = MaterialTheme.colorScheme.primary
                     ) {
                         Icon(
@@ -277,8 +252,6 @@ fun MainScaffold(
                 }
             }
         ) { innerPadding ->
-            // ===== 内容区域 =====
-            // 根据选中的导航项显示不同页面
             when (selectedItem) {
                 0 -> LotteryScreen(
                     innerPadding = innerPadding,

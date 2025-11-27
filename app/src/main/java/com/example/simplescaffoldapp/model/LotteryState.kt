@@ -29,7 +29,7 @@ data class LotteryUiState(
     val showConfigDialog: Boolean = false
 )
 
-// ==================== MVI 新增部分 ====================
+//  MVI 新增部分
 
 /**
  * 用户意图 (Intent) - MVI 核心
